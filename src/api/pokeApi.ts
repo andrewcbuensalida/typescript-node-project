@@ -13,6 +13,7 @@ export async function getPokemon(limit: number = 10, offset: number = 0) {
 }
 
 export async function getPokemonImage(name: string = 'pikachu') {
+  console.log(`Fetching Pokémon image for ${name}...`);
   const url = `https://pokeapi.co/api/v2/pokemon/${name}`;
   try {
     const response = await axios.get(url);

@@ -64,6 +64,12 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
   const previousMessages: Message[] = [];
   try {
     const result = await pool.query('SELECT * FROM messages WHERE user_id = $1', [USERID]);
+    // convert tool_calls from string in db to JSON
+    result.rows.forEach((row: any) => {
+      if (row.tool_calls) {
+        row.tool_calls = JSON.parse(row.tool_calls);
+      }
+    });
     previousMessages.push(...result.rows);
   } catch (error) {
     console.error('Error fetching previous messages from database:', error);
@@ -138,19 +144,21 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
       title: req.body.title,
       userId: USERID,
       createdAt: new Date(),
+      tool_calls: response.choices[0].message.tool_calls,
     };
 
     console.log(`*Example response: `, response);
     // insert assistant message into database
     try {
       const assistantMessageResult = await pool.query(
-        'INSERT INTO messages (user_id, role, content, title, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+        'INSERT INTO messages (user_id, role, content, title, created_at, tool_calls) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
         [
           newAssistantMessage.userId,
           newAssistantMessage.role,
           newAssistantMessage.content,
           newAssistantMessage.title,
           newAssistantMessage.createdAt,
+          JSON.stringify(newAssistantMessage.tool_calls),
         ]
       );
       const { id } = assistantMessageResult.rows[0];
@@ -168,7 +176,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
     } else if (response.choices[0].finish_reason === 'tool_calls') {
       const toolCall = response.choices[0].message.tool_calls[0];
       console.log(`*Example toolCall: `, toolCall);
-      if (toolCall.function.name === 'tavilySearch') {
+      console.log(`*Example response.choices[0].message: `, response.choices[0].message)
+      if (toolCall.function.name === 'tavilySearch') {       
         const tavilyQuery = JSON.parse(toolCall.function.arguments).tavilyQuery;
         const tavilyResponse = await tavilySearch(tavilyQuery + '. The current date is ' + new Date().toDateString());
 
@@ -204,7 +213,10 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           return res.status(500).send('Internal Server Error');
         }
         messages.push(functionCallResultMessage);
+        console.log(`*Example messages: `, messages)
 
+        console.log('about to call OpenAI API again');
+        
         // Call the OpenAI API's chat completions endpoint to send the tool call result back to the model
         const assistantResponseToToolCall = await openai.chat.completions.create({
           model: 'gpt-4o',
@@ -239,18 +251,20 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
         res.json(assistantResponseToToolCallMessage);
       }
-      // else if (toolCall.function.name === 'getPokemon') {
-      //   const limit = JSON.parse(toolCall.function.arguments).limit;
-      //   console.log(`*Example limit: `, limit);
-      //   const getPokemonResponse = await getPokemon(limit);
-      //   console.log(`*Example getPokemonResponse: `, getPokemonResponse);
+      else if (toolCall.function.name === 'getPokemon') {
+        const limit = JSON.parse(toolCall.function.arguments).limit;
+        console.log(`*Example limit: `, limit);
+        const getPokemonResponse = await getPokemon(limit);
+        console.log(`*Example getPokemonResponse: `, getPokemonResponse);
+        
+
       //   // } else if (toolCall.function.name === 'getPokemonImage') {
       //   //   newMessage = {
       //   //     role: 'assistant',
       //   //     content: 'This is the response from the getPokemonImage tool.',
       //   //     refusal: null,
       //   //   };
-      // }
+      }
     }
   } catch (e: any) {
     console.error(e);
