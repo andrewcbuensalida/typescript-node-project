@@ -1,5 +1,4 @@
 DROP TABLE IF EXISTS messages;
-DROP TABLE IF EXISTS chats;
 DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
@@ -9,24 +8,14 @@ CREATE TABLE users (
   password VARCHAR(100) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-CREATE TABLE chats (
-  title VARCHAR(100) NOT NULL,
-  chat_id SERIAL PRIMARY KEY,
-  user_id INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(user_id)
-);
-
 CREATE TABLE messages (
-  message_id VARCHAR(100) PRIMARY KEY,
-  "role" VARCHAR(10) NOT NULL,
-  chat_id INT NOT NULL,
-  sender_id INT NOT NULL,
+  id SERIAL PRIMARY KEY,
+  "role" VARCHAR(50) NOT NULL,
+  user_id INT REFERENCES users(user_id),
+  title VARCHAR(255) NOT NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (chat_id) REFERENCES chats(chat_id),
-  FOREIGN KEY (sender_id) REFERENCES users(user_id)
+  tool_call_id VARCHAR(100)
 );
 
 INSERT INTO users (username, email, password) 
