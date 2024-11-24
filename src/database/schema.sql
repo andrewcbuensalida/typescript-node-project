@@ -21,3 +21,5 @@ CREATE TABLE messages (
 
 INSERT INTO users (username, email, password) 
 VALUES ('dummy_user', 'dummy@example.com', 'password123');
+
+select id, role, user_id, SUBSTRING(title,1,30) as title, created_at, SUBSTRING(content, 1, 80) as content from messages;

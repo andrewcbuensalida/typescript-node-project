@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+// TODO not used
 export async function getPokemon(limit: number = 10, offset: number = 0) {
   console.log('Fetching Pokémon data...');
   const url = `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`;

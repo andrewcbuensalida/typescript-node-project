@@ -56,14 +56,18 @@ app.get('/api/messages', auth, async (req, res) => {
 app.post('/api/completions', auth, limiter, async (req, res) => {
   // TODO need to authenticate USERID from jwt token then need to make sure USERID is the same as the user_id in the chat record for authorization
 
-  // if this is the first message in the conversation, req.body.title gets the user's first message
-  if(!req.body.title) {
-    req.body.title = req.body.message;
+  // If it's the first message, set the title to the message
+  if (!req.body.title) {
+    req.body.title = req.body.message; // TODO chat id needs to come from the frontend
   }
+
   // Fetch previous messages from the database, if any
   const previousMessages: Message[] = [];
   try {
-    const result = await pool.query('SELECT * FROM messages WHERE user_id = $1', [USERID]);
+    const result = await pool.query('SELECT * FROM messages WHERE user_id = $1 AND title = $2', [
+      USERID,
+      req.body.title,
+    ]);
     // convert tool_calls from string in db to JSON
     result.rows.forEach((row: any) => {
       if (row.tool_calls) {
@@ -75,8 +79,6 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
     console.error('Error fetching previous messages from database:', error);
     return res.status(500).send('Internal Server Error');
   }
-
-  console.log(`*Example previousMessages: `, previousMessages);
 
   if (previousMessages.length === 0) {
     const systemMessage: Message = {
@@ -132,7 +134,6 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
   let newAssistantMessage: Message;
 
   try {
-    console.log('Fetching response from OpenAI API...');
     const response: any = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: messages,
@@ -144,10 +145,9 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
       title: req.body.title,
       userId: USERID,
       createdAt: new Date(),
-      tool_calls: response.choices[0].message.tool_calls,
+      tool_calls: response.choices[0].message.tool_calls?.slice(0, 1), // could be undefined. TODO It breaks if LLM decides more than one tool call is needed and you don't call all of them. Questions like '54th pokemon?' produce two tool calls. For now just get the first tool call.
     };
 
-    console.log(`*Example response: `, response);
     // insert assistant message into database
     try {
       const assistantMessageResult = await pool.query(
@@ -171,13 +171,12 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
     // if not a tool call
     if (response.choices[0].finish_reason === 'stop') {
-      res.json(newAssistantMessage);
+      return res.json(newAssistantMessage);
       // if it's a tool call
     } else if (response.choices[0].finish_reason === 'tool_calls') {
       const toolCall = response.choices[0].message.tool_calls[0];
-      console.log(`*Example toolCall: `, toolCall);
-      console.log(`*Example response.choices[0].message: `, response.choices[0].message)
-      if (toolCall.function.name === 'tavilySearch') {       
+
+      if (toolCall.function.name === 'tavilySearch') {
         const tavilyQuery = JSON.parse(toolCall.function.arguments).tavilyQuery;
         const tavilyResponse = await tavilySearch(tavilyQuery + '. The current date is ' + new Date().toDateString());
 
@@ -213,10 +212,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           return res.status(500).send('Internal Server Error');
         }
         messages.push(functionCallResultMessage);
-        console.log(`*Example messages: `, messages)
 
-        console.log('about to call OpenAI API again');
-        
         // Call the OpenAI API's chat completions endpoint to send the tool call result back to the model
         const assistantResponseToToolCall = await openai.chat.completions.create({
           model: 'gpt-4o',
@@ -249,21 +245,9 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           return res.status(500).send('Internal Server Error');
         }
 
-        res.json(assistantResponseToToolCallMessage);
-      }
-      else if (toolCall.function.name === 'getPokemon') {
-        const limit = JSON.parse(toolCall.function.arguments).limit;
-        console.log(`*Example limit: `, limit);
-        const getPokemonResponse = await getPokemon(limit);
-        console.log(`*Example getPokemonResponse: `, getPokemonResponse);
-        
+        return res.json(assistantResponseToToolCallMessage);
+      } else if (toolCall.function.name === 'getPokemonImage') {
 
-      //   // } else if (toolCall.function.name === 'getPokemonImage') {
-      //   //   newMessage = {
-      //   //     role: 'assistant',
-      //   //     content: 'This is the response from the getPokemonImage tool.',
-      //   //     refusal: null,
-      //   //   };
       }
     }
   } catch (e: any) {
