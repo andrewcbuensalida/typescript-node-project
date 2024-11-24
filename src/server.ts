@@ -43,9 +43,23 @@ app.get('/healthCheck', auth, (req, res) => {
 
 // get all messages for the user
 app.get('/api/messages', auth, async (req, res) => {
+  console.log('Fetching previous messages...');
   try {
     const result = await pool.query('SELECT * FROM messages WHERE user_id = $1', [USERID]);
-    res.json(result.rows);
+    const messages: Message[] = result.rows.map((row: any) => ({
+      content: row.content,
+      createdAt: row.created_at,
+      errorMessage: row.error_message,
+      id: row.id,
+      role: row.role,
+      title: row.title,
+      tool_call_id: row.tool_call_id,
+      tool_calls: row.tool_calls ? JSON.parse(row.tool_calls) : undefined,
+      toolName: row.tool_name,
+      userId: row.user_id,
+    }));
+    const filteredMessages = messages.filter((message) => (message.role === 'assistant' || message.role === 'user') && !message.tool_calls);
+    res.json(filteredMessages);
   } catch (error) {
     console.error('Error fetching messages from database:', error);
     res.status(500).send('Internal Server Error');
@@ -140,7 +154,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
     });
     newAssistantMessage = {
       role: 'assistant',
-      content: response.choices[0].message.content || '',
+      content: response.choices[0].message.content || '', // this is '' if it's a tool call
       title: req.body.title,
       userId: USERID,
       createdAt: new Date(),
@@ -259,10 +273,12 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
         const functionCallResultMessage: Message = {
           role: 'tool',
-          content: errorMessage || JSON.stringify({
-            pokemonName: pokemonName,
-            pokemonImage: pokemonImage,
-          }),
+          content:
+            errorMessage ||
+            JSON.stringify({
+              pokemonName: pokemonName,
+              pokemonImage: pokemonImage,
+            }),
           tool_call_id: response.choices[0].message.tool_calls[0].id,
           createdAt: new Date(),
           title: req.body.title,
@@ -292,7 +308,43 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           return res.status(500).send('Internal Server Error');
         }
 
-        return res.json(functionCallResultMessage);
+        const assistantResponseToToolCallMessage: Message = {
+          role: 'assistant',
+          content:
+            errorMessage ||
+            JSON.stringify({
+              pokemonName: pokemonName,
+              pokemonImage: pokemonImage,
+            }),
+          tool_call_id: response.choices[0].message.tool_calls[0].id,
+          createdAt: new Date(),
+          title: req.body.title,
+          userId: USERID,
+          toolName: 'getPokemonImage',
+          errorMessage: errorMessage,
+        };
+        // insert function call result message into database
+        try {
+          const assistantResponseToToolCallMessageResult = await pool.query(
+            'INSERT INTO messages (user_id, role, content, tool_call_id, title, created_at,tool_name) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+            [
+              assistantResponseToToolCallMessage.userId,
+              assistantResponseToToolCallMessage.role,
+              assistantResponseToToolCallMessage.content,
+              assistantResponseToToolCallMessage.tool_call_id,
+              assistantResponseToToolCallMessage.title,
+              assistantResponseToToolCallMessage.createdAt,
+              assistantResponseToToolCallMessage.toolName,
+            ]
+          );
+          const { id } = assistantResponseToToolCallMessageResult.rows[0];
+          assistantResponseToToolCallMessage.id = id;
+        } catch (error) {
+          console.error('Error inserting assistant response to tool call message into database:', error);
+          return res.status(500).send('Internal Server Error');
+        }
+
+        return res.json(assistantResponseToToolCallMessage);
       }
     }
   } catch (e: any) {
