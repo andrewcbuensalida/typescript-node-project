@@ -8,7 +8,8 @@
     "dev": "npm run build:start",
     "qa": "npm run build:start",
     "prod": "npm run build:start",
-    "build:start": "rm -rf dist/ && tsc -p tsconfig.json && node -r dotenv/config dist/server.js",
+    "build:start:windows": "rimraf dist/ && tsc -p tsconfig.json && node -r dotenv/config dist/server.js",
+    "build:start": "rm -rf dist/ && tsc -p tsconfig.json && node dist/server.js",
     "lint:no-fix": "eslint src/**/*.ts",
     "lint": "eslint src/**/*.ts --fix",
     "prettier": "prettier --write ."

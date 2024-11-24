@@ -20,7 +20,7 @@ const USERID = 1 // TODO user needs to send this in the jwt token
 const app: Application = express()
 // Express Middlewares
 app.use(helmet())
-app.use(cors())
+app.use(cors({ origin: '*' })) // Allow CORS from any origin
 app.use(express.urlencoded({ limit: '25mb', extended: true }))
 app.use(express.json())
 

@@ -92,6 +92,9 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 - `docker push andrewcbuensalida/pokemon-postgres-image:latest`
 - OR you can use the docker desktop interface to push
 
+## To deploy backend to AWS elastic beanstalk
+- 
+
 ## TODO
 
 - better instructions
