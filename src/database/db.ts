@@ -1,9 +1,9 @@
 import { Pool } from 'pg'
 
 export default new Pool({
-  user: 'your_username',
+  user: 'yourusername',
   host: 'localhost',
   database: 'pokemon_chatbot_db',
-  password: 'your_password',
+  password: 'yourpassword',
   port: 5433,
 })

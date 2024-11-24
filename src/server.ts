@@ -37,7 +37,7 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
   next()
 }
 
-app.get('/healthCheck', auth, (req, res) => {
+app.get('/healthCheck', (req, res) => {
   res.send('Server is running')
 })
 

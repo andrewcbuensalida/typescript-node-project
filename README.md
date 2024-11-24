@@ -38,11 +38,11 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
   - Install Docker desktop. https://www.docker.com/products/docker-desktop and make sure it's running
   - to use my Postgres container that has empty tables initialized:
     - Pull then run in one step with
-      - `docker run -d --name pokemon-postgres-container -e POSTGRES_USER=your_username -e POSTGRES_PASSWORD=your_password -p 5433:5432 andrewcbuensalida/pokemon-postgres-image:latest`
+      - `docker run -d --name pokemon-postgres-container -e POSTGRES_USER=yourusername -e POSTGRES_PASSWORD=yourpassword -p 5433:5432 andrewcbuensalida/pokemon-postgres-image:latest`
   - Alternatively, to use a Postgres container that you have to manually initialize the tables
 
     - Have a generic PostreSQL container running:
-      - `docker run --name pokemon-postgres-container -e POSTGRES_PASSWORD=your_password -e POSTGRES_USER=your_username -p 5433:5432 -d postgres`
+      - `docker run --name pokemon-postgres-container -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_USER=yourusername -p 5433:5432 -d postgres`
       - --name is container name. -p is port mapping. --rm will delete container when done.
     - Install ts-node
       - `npm i ts-node --global`
@@ -52,7 +52,7 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 
   - To check if tables are successfully created
     - In postgres container, connect to database with
-      - `psql -U your_username -d pokemon_chatbot_db -p 5432`
+      - `psql -U yourusername -d pokemon_chatbot_db -p 5432`
     - List databases
       - `\l`
     - to list tables
@@ -73,13 +73,14 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
     - Go to http://localhost:3000/
 
 ## To create a postgres docker image that has empty tables already initialized
+
 - create schema.sql. Make sure it has CREATE DATABASE uncomented
 - create a Dockerfile in the same folder.
 - Build the image
   - `docker build -t pokemon-postgres-image .`
   - This will copy schema.sql into the container folder that postgres runs automatically on run
 - Run the container
-  `docker run -d --name pokemon-postgres-container -e POSTGRES_PASSWORD=your_password -e POSTGRES_USER=your_username -p 5433:5432 pokemon-postgres-image`
+  `docker run -d --name pokemon-postgres-container -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_USER=yourusername -p 5433:5432 pokemon-postgres-image`
 
 ## To push image to dockerhub so others can run it
 

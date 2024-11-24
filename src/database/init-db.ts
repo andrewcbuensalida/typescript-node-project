@@ -5,9 +5,9 @@ import path from 'path'
 const DATABASE_NAME = 'pokemon_chatbot_db'
 // Configuration for connecting to the default database (postgres)
 const defaultConfig = {
-  user: 'your_username',
+  user: 'yourusername',
   host: 'localhost',
-  password: 'your_password',
+  password: 'yourpassword',
   port: 5433,
 }
 
