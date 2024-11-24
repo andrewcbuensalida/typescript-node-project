@@ -4,10 +4,10 @@
   "description": "Node.js project with TypeScript, Express.js, ESLint, Prettier, ts-node, nodemon and package.json environment specific scripts.",
   "main": "index.js",
   "scripts": {
-    "local": "cross-env NODE_ENV=local nodemon",
-    "dev": "cross-env NODE_ENV=development npm run build:start",
-    "qa": "cross-env NODE_ENV=qa npm run build:start",
-    "prod": "cross-env NODE_ENV=production npm run build:start",
+    "local": "nodemon",
+    "dev": "npm run build:start",
+    "qa": "npm run build:start",
+    "prod": "npm run build:start",
     "build:start": "rm -rf dist/ && tsc -p tsconfig.json && node -r dotenv/config dist/server.js",
     "lint:no-fix": "eslint src/**/*.ts",
     "lint": "eslint src/**/*.ts --fix",
@@ -52,5 +52,12 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/shubham-sharmas/typescript-node-project"
+  },
+  "prettier": {
+    "semi": false,
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2,
+    "trailingComma": "es5"
   }
 }

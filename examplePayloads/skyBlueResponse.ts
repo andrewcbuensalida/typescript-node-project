@@ -24,7 +24,7 @@ const response1 = {
     },
   },
   system_fingerprint: 'fp_831e067d82',
-};
+}
 
 const newMessage1 = {
   role: 'assistant',
@@ -41,4 +41,4 @@ const newMessage1 = {
     '\n' +
     'When the sun is lower in the sky, such as during sunrise or sunset, the light has to pass through more atmosphere, scattering longer wavelengths (like red and yellow), which is why we see those colors.',
   refusal: null,
-};
+}

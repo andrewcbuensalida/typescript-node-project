@@ -24,7 +24,7 @@ const response = {
     },
   },
   system_fingerprint: 'fp_831e067d82',
-};
+}
 
 const newMessage = {
   role: 'assistant',
@@ -37,11 +37,10 @@ const newMessage = {
     },
   ],
   refusal: null,
-};
+}
 
 const toolCallFunction = {
   id: 'call_VUItwaX1Fyzro3PPl08HLL1S',
   type: 'function',
   function: { name: 'trainerName', arguments: '{"test":"trainer"}' },
-};
-
+}

@@ -1,3 +1,9 @@
+-- Only do this when building an image
+-- CREATE DATABASE "pokemon_chatbot_db";
+-- -- connect to the database
+-- \c "pokemon_chatbot_db"
+
+
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS users;
 
@@ -24,4 +30,4 @@ CREATE TABLE messages (
 INSERT INTO users (username, email, password) 
 VALUES ('dummy_user', 'dummy@example.com', 'password123');
 
-select id, role, user_id, SUBSTRING(title,1,30) as title, created_at, SUBSTRING(content, 1, 80) as content from messages;
+-- select id, role, user_id, SUBSTRING(title,1,30) as title, created_at, SUBSTRING(content, 1, 80) as content from messages;

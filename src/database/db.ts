@@ -1,9 +1,9 @@
-import { Pool } from 'pg';
+import { Pool } from 'pg'
 
 export default new Pool({
   user: 'your_username',
   host: 'localhost',
-  database: 'react-chatgpt-clone',
+  database: 'pokemon_chatbot_db',
   password: 'your_password',
   port: 5433,
-});
+})

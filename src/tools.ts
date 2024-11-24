@@ -4,13 +4,14 @@ export const tools: any = [
     function: {
       name: 'tavilySearch',
       description:
-        "Get information about a Pokemon. Call this whenever you need to know more about a Pokemon, for example when a user asks 'What is the type of Pikachu?'. You can also use this tool to get information about other topics and current events.",
+        "Get information about a Pokemon. Call this whenever you need to know more about a Pokemon, for example when a user asks 'What is the type of Pikachu?'. You can also use this tool to get information about current events, like when the user asks 'what is the date today?' or 'what is the weather in New York?'",
       parameters: {
         type: 'object',
         properties: {
           tavilyQuery: {
             type: 'string',
-            description: "The user's question about Pokemon, other topics, or a current event about Pokemon.",
+            description:
+              "The user's question about Pokemon, other topics, or a current event about Pokemon.",
           },
         },
         required: ['tavilyQuery'],
@@ -37,4 +38,4 @@ export const tools: any = [
       },
     },
   },
-];
+]
