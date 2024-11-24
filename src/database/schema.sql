@@ -16,7 +16,9 @@ CREATE TABLE messages (
   content TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   tool_call_id VARCHAR(100),
-  tool_calls VARCHAR(500)
+  tool_calls VARCHAR(500),
+  tool_name VARCHAR(100),
+  error_message VARCHAR(200)
 );
 
 INSERT INTO users (username, email, password) 

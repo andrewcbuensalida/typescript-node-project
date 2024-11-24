@@ -23,7 +23,7 @@ export const tools: any = [
     function: {
       name: 'getPokemonImage',
       description:
-        "Get an image of a Pokemon. Call this when you need to get an image of a Pokemon, for example when a user asks 'Show me a picture of Pikachu.'",
+        "Get an image of a Pokemon to show to the user. Call this when you need to get an image of a Pokemon, for example when a user asks 'Show me Pikachu.' or 'show electrode'. Always make sure that the name is correct and lower case.",
       parameters: {
         type: 'object',
         properties: {

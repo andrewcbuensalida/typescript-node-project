@@ -7,6 +7,8 @@ export interface Message {
   tool_call_id?: string;
   userId: number;
   tool_calls?: ToolCall[];
+  toolName?: string;
+  errorMessage?: string;
 }
 
 export interface ToolCall {

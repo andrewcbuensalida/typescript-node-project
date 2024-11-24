@@ -7,8 +7,7 @@ import pool from './database/db';
 import OpenAI from 'openai';
 import { tools } from './tools';
 import { tavilySearch } from './api/tavily';
-import { getPokemon } from './api/pokeApi';
-import { title } from 'process';
+import { getPokemonImage } from './api/pokeApi';
 import { Message } from './types';
 
 dotenv.config();
@@ -27,7 +26,7 @@ app.use(express.json());
 
 const limiter = rateLimit({
   windowMs: 60 * 10000, // 10 minute
-  max: 10, // limit each IP to 100 requests per minute defined in windowMs
+  max: 100, // limit each IP to 100 requests per minute defined in windowMs
   message: 'Too many requests from this IP, please try again later.',
 });
 
@@ -247,7 +246,53 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
         return res.json(assistantResponseToToolCallMessage);
       } else if (toolCall.function.name === 'getPokemonImage') {
+        const pokemonName = JSON.parse(toolCall.function.arguments).name;
 
+        let pokemonImage;
+        let errorMessage;
+        try {
+          pokemonImage = await getPokemonImage(pokemonName);
+        } catch (error) {
+          console.error('Error fetching Pokemon image:', error);
+          errorMessage = 'Error fetching Pokemon image';
+        }
+
+        const functionCallResultMessage: Message = {
+          role: 'tool',
+          content: errorMessage || JSON.stringify({
+            pokemonName: pokemonName,
+            pokemonImage: pokemonImage,
+          }),
+          tool_call_id: response.choices[0].message.tool_calls[0].id,
+          createdAt: new Date(),
+          title: req.body.title,
+          userId: USERID,
+          toolName: 'getPokemonImage',
+          errorMessage: errorMessage,
+        };
+
+        // insert function call result message into database
+        try {
+          const functionCallResultMessageResult = await pool.query(
+            'INSERT INTO messages (user_id, role, content, tool_call_id, title, created_at,tool_name) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+            [
+              functionCallResultMessage.userId,
+              functionCallResultMessage.role,
+              functionCallResultMessage.content,
+              functionCallResultMessage.tool_call_id,
+              functionCallResultMessage.title,
+              functionCallResultMessage.createdAt,
+              functionCallResultMessage.toolName,
+            ]
+          );
+          const { id } = functionCallResultMessageResult.rows[0];
+          functionCallResultMessage.id = id;
+        } catch (error) {
+          console.error('Error inserting function call result message into database:', error);
+          return res.status(500).send('Internal Server Error');
+        }
+
+        return res.json(functionCallResultMessage);
       }
     }
   } catch (e: any) {
