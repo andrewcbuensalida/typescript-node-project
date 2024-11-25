@@ -95,11 +95,12 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 - OR you can use the docker desktop interface to push
 
 ## To deploy backend to AWS ECS
+
 - Build the image. Go to root of this folder, run
   - `docker build -t pokemon-node-image .`
   - This uses the Dockerfile, copies package-lock.json, installs node_modules in container, converts ts to js.
 - Test the container by running it. Make sure IS_IN_CONTAINER is true if hitting a local db
-  - `docker run --rm --name pokemon-node-container --env-file .env -p 5000:5000 pokemon-node-image`
+  - `docker run --rm --name pokemon-node-container --env-file .env -p 8080:8080 pokemon-node-image`
 - Create an empty ECR repo in aws console. Name the repo the same as the image name. Look at push commands:
   - Login, In powershell (must have AWS Tools for Powershell installed),
     `(Get-ECRLoginCommand).Password | docker login --username AWS --password-stdin 597043972440.dkr.ecr.us-west-1.amazonaws.com`
@@ -110,13 +111,13 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 - In ECS
   - Create cluster
   - Create target group in ec2
-  - Create a task definition. 
-    - Task Role and Task Execution Role should be ecsTaskExecutionRole. 
-    - There was no ecsTaskExecutionRole option in the dropdown the first time, but the second time there was. 
-    - Need port 5000 mapping, and maybe 80 for safe measure. 
+  - Create a task definition.
+    - Task Role and Task Execution Role should be ecsTaskExecutionRole.
+    - There was no ecsTaskExecutionRole option in the dropdown the first time, but the second time there was.
+    - Need port 8080 mapping, and maybe 80 for safe measure.
     - Individually add environment variables, safer than pointing to an s3. Copy prod.env s3 arn to here.
     - command for health check should be
-      - `CMD-SHELL, curl -f http://localhost/healthCheck || exit 1` 
+      - `CMD-SHELL, curl -f http://localhost/healthCheck || exit 1`
   - Create a service (in cluster section) with application load balancer. Select task family from previous step. This will run a cloudformation stack.
 
 ## TODO
