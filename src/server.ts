@@ -38,7 +38,7 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
 }
 
 app.get('/healthCheck', (req, res) => {
-  res.send('Server is running')
+  res.status(200).send('OK')
 })
 
 // get all messages for the user
