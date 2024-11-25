@@ -19,6 +19,8 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 - NodeJs again saves the response to Postgres,
 - Response is sent to React.
 
+## The live site is at https://master.d25jr6vo3627gh.amplifyapp.com/
+
 ## Instructions to run app locally
 
 - Have git installed. https://gitforwindows.org/
@@ -82,7 +84,7 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 - Run the container
   `docker run -d --name pokemon-postgres-container -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_USER=yourusername -p 5433:5432 pokemon-postgres-image`
 
-## To push image to dockerhub so others can run it
+## To push postgres image to dockerhub so others can run it
 
 - Create a dockerhub account
 - In command prompt
@@ -123,7 +125,6 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 - front-end should send chat_id
 - auth
 - Deploy be elastic Beanstalk
-- Fe Amplify
 - design diagram
 - add to portfolio
 - dry
