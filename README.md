@@ -3,11 +3,12 @@
 This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from current Pokemon events, to abilities. You can even ask it to show you images of the Pokemon.
 
 ## Architecture
+https://lucid.app/lucidchart/89b779a0-97cc-48c0-b3dd-dd03d01d1958/edit?viewport_loc=-380%2C85%2C1812%2C792%2C0_0&invitationId=inv_b6a9836b-e893-4a47-8279-f55a722fce5f
 
 ### Conversation workflow
 
 - User goes to React website that's hosted on AWS Amplify. Asks a question about Pokemon.
-- Question goes to NodeJs server that's hosted in AWS Elastic Beanstalk.
+- Question goes to NodeJs server that's hosted in Heroku.
 - NodeJs saves messages to a Postgres AWS RDS database.
 - NodeJs also sends question to OpenAI API.
 - OpenAI API does inference and either sends back the answer, or suggests what tools and arguments to use to NodeJs,
@@ -126,6 +127,5 @@ This ChatGPT clone allows you to ask a chatbot anything about Pokemon, from curr
 - front-end should send chat_id
 - auth
 - Deploy be elastic Beanstalk
-- design diagram
 - add to portfolio
 - dry
