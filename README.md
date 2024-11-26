@@ -122,7 +122,9 @@ https://lucid.app/lucidchart/89b779a0-97cc-48c0-b3dd-dd03d01d1958/edit?viewport_
   - Create a service (in cluster section) with application load balancer. Select task family from previous step. This will run a cloudformation stack.
 
 ## TODO
-
+- get rid of 'not secure' next to url. 
+- backend in elastic beanstalk
+- backend in ecs
 - better instructions
 - front-end should send chat_id
 - auth

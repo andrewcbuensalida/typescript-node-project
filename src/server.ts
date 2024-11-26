@@ -316,7 +316,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         // insert function call result message into database
         try {
           const functionCallResultMessageResult = await pool.query(
-            'INSERT INTO messages (user_id, role, content, tool_call_id, title, created_at,tool_name) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+            'INSERT INTO messages (user_id, role, content, tool_call_id, title, created_at,tool_name,error_message) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
             [
               functionCallResultMessage.userId,
               functionCallResultMessage.role,
@@ -325,6 +325,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
               functionCallResultMessage.title,
               functionCallResultMessage.createdAt,
               functionCallResultMessage.toolName,
+              functionCallResultMessage.errorMessage,
             ]
           )
           const { id } = functionCallResultMessageResult.rows[0]
@@ -345,7 +346,6 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
               pokemonName: pokemonName,
               pokemonImage: pokemonImage,
             }),
-          tool_call_id: response.choices[0].message.tool_calls[0].id,
           createdAt: new Date(),
           title: req.body.title,
           userId: USERID,
@@ -355,15 +355,15 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         // insert function call result message into database
         try {
           const assistantResponseToToolCallMessageResult = await pool.query(
-            'INSERT INTO messages (user_id, role, content, tool_call_id, title, created_at,tool_name) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+            'INSERT INTO messages (user_id, role, content, title, created_at,tool_name,error_message) VALUES ($1, $2, $3, $4, $5, $6,$7) RETURNING id',
             [
               assistantResponseToToolCallMessage.userId,
               assistantResponseToToolCallMessage.role,
               assistantResponseToToolCallMessage.content,
-              assistantResponseToToolCallMessage.tool_call_id,
               assistantResponseToToolCallMessage.title,
               assistantResponseToToolCallMessage.createdAt,
               assistantResponseToToolCallMessage.toolName,
+              assistantResponseToToolCallMessage.errorMessage,
             ]
           )
           const { id } = assistantResponseToToolCallMessageResult.rows[0]
