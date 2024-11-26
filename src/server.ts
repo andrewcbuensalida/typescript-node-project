@@ -5,17 +5,12 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import { insertMessageIntoDb, selectMessagesByUserId } from './database/db'
-import OpenAI from 'openai'
-import { tools } from './tools'
-import { tavilySearch } from './api/tavily'
+import { tavilySearch } from './api/tavilyApi'
 import { getPokemonImage } from './api/pokeApi'
 import { Message } from './types'
+import { openaiChatCompletionsCreate } from './api/openaiApi'
 
 dotenv.config()
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
 const USERID = 1 // TODO user needs to send this in the jwt token
 
 const app: Application = express()
@@ -139,22 +134,18 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
   try {
     console.log('Sending user message to OPENAI...')
-    const response: any = await openai.chat.completions.create({
-      model: 'gpt-4o',
+    const response: any = await openaiChatCompletionsCreate({
       messages: messages,
-      tools: tools,
-      parallel_tool_calls: false, // so LLM doesn't respond with multiple tool calls
     })
-    console.log('OPENAI response received'),
-      (newAssistantMessage = {
-        role: 'assistant',
-        content: response.choices[0].message.content || '', // this is '' if it's a tool call
-        title: req.body.title,
-        userId: USERID,
-        createdAt: new Date(),
-        tool_calls: response.choices[0].message.tool_calls, // could be undefined. If parallel_tool_calls is true, this will at most be an array of 1 tool call. If parallel_tool_calls is false, it breaks if LLM decides more than one tool call is needed and there isn't a tool call message afterwards for each. Questions like '54th pokemon?' produce two tool calls.
-      })
-    console.log(`*Example newAssistantMessage: `, newAssistantMessage)
+
+    newAssistantMessage = {
+      role: 'assistant',
+      content: response.choices[0].message.content || '', // this is '' if it's a tool call
+      title: req.body.title,
+      userId: USERID,
+      createdAt: new Date(),
+      tool_calls: response.choices[0].message.tool_calls, // could be undefined. If parallel_tool_calls is true, this will at most be an array of 1 tool call. If parallel_tool_calls is false, it breaks if LLM decides more than one tool call is needed and there isn't a tool call message afterwards for each. Questions like '54th pokemon?' produce two tool calls.
+    }
 
     // insert assistant message into database
     try {
@@ -210,11 +201,9 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         messages.push(functionCallResultMessage)
 
         // Call the OpenAI API's chat completions endpoint to send the tool call result back to the model
-        const assistantResponseToToolCall =
-          await openai.chat.completions.create({
-            model: 'gpt-4o',
-            messages: messages,
-          })
+        const assistantResponseToToolCall = await openaiChatCompletionsCreate({
+          messages: messages,
+        })
 
         const assistantResponseToToolCallMessage: Message = {
           role: 'assistant',

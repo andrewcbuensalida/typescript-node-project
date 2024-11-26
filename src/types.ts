@@ -1,3 +1,6 @@
+export interface openaiChatCompletionsCreateArgs {
+  messages: Message[]
+}
 export interface Message {
   content: string
   createdAt: Date

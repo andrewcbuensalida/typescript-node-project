@@ -8,12 +8,14 @@ const tvly = tavily({ apiKey: process.env.TAVILY_API_KEY })
 
 export async function tavilySearch(tavilyQuery: string) {
   console.log('Searching using Tavily.... Query:', tavilyQuery)
+  let response
   try {
-    const response = await tvly.searchContext(tavilyQuery, {})
-    return response
+    response = await tvly.searchContext(tavilyQuery, {})
   } catch (error) {
-    console.error('Error executing search context:', error)
-    throw error
+    console.error('Error executing Tavily search:', error)
+    response = 'Error executing Tavily search'
+  } finally {
+    return response
   }
 }
 

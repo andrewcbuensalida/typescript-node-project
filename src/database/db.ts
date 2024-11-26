@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { Message } from '../types'
+import { withRetries } from '../withRetries'
 
 const pool = process.env.DATABASE_URL
   ? new Pool({
@@ -14,6 +15,8 @@ const pool = process.env.DATABASE_URL
       user: 'yourusername',
     })
 
+
+
 async function selectMessagesByUserId(userId: number) {
   const query = `
         SELECT * FROM messages
@@ -21,13 +24,10 @@ async function selectMessagesByUserId(userId: number) {
       `
   const values = [userId]
 
-  try {
+  return withRetries(async () => {
     const res = await pool.query(query, values)
     return res
-  } catch (err) {
-    console.error('Error selecting messages from database', err)
-    throw err
-  }
+  })
 }
 
 async function insertMessageIntoDb(message: Message) {
@@ -48,13 +48,10 @@ async function insertMessageIntoDb(message: Message) {
     message.userId,
   ]
 
-  try {
+  return withRetries(async () => {
     const res = await pool.query(query, values)
     return res
-  } catch (err) {
-    console.error('Error inserting message into database', err)
-    throw err
-  }
+  })
 }
 
 export { selectMessagesByUserId, insertMessageIntoDb }
