@@ -27,6 +27,7 @@ CREATE TABLE messages (
   error_message VARCHAR(200)
 );
 
+-- this is needed
 INSERT INTO users (username, email, password) 
 VALUES ('dummy_user', 'dummy@example.com', 'password123');
 

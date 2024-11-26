@@ -9,6 +9,7 @@ import { tools } from './tools'
 import { tavilySearch } from './api/tavily'
 import { getPokemonImage } from './api/pokeApi'
 import { Message } from './types'
+import './logger'
 
 dotenv.config()
 
@@ -142,16 +143,19 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
       model: 'gpt-4o',
       messages: messages,
       tools: tools,
+      parallel_tool_calls: false, // so LLM doesn't respond with multiple tool calls
     })
+    console.log('OPENAI response received'), 
     newAssistantMessage = {
       role: 'assistant',
       content: response.choices[0].message.content || '', // this is '' if it's a tool call
       title: req.body.title,
       userId: USERID,
       createdAt: new Date(),
-      tool_calls: response.choices[0].message.tool_calls?.slice(0, 1), // could be undefined. TODO It breaks if LLM decides more than one tool call is needed and you don't call all of them. Questions like '54th pokemon?' produce two tool calls. For now just get the first tool call.
+      tool_calls: response.choices[0].message.tool_calls, // could be undefined. If parallel_tool_calls is true, this will at most be an array of 1 tool call. If parallel_tool_calls is false, it breaks if LLM decides more than one tool call is needed and there isn't a tool call message afterwards for each. Questions like '54th pokemon?' produce two tool calls.
     }
-
+    console.log(`*Example newAssistantMessage: `, newAssistantMessage)
+    
     // insert assistant message into database
     try {
       const assistantMessageResult =
