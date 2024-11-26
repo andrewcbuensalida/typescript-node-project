@@ -9,7 +9,8 @@ export async function getPokemonImage(name: string = 'pikachu') {
       response.data.sprites.other['official-artwork'].front_default ||
       response.data.sprites.other.home.front_default
     )
-    // mimikyu, the 556th Pokémon, errors.
+    // mimikyu, the 778th Pokémon, errors because in pokeapi the name is mimikyu-disguised.
+    // pic of 1024 LLM says it's Gholdengo, but PokeAPI says it's terapagos (ground truth)
   } catch (error) {
     console.error(`Error fetching data for Pokémon ${name}:`)
     throw error

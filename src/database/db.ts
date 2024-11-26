@@ -22,8 +22,7 @@ async function selectMessagesByUserId(userId: number) {
   const values = [userId]
 
   try {
-    const res = await pool
-      .query(query, values)
+    const res = await pool.query(query, values)
     return res
   } catch (err) {
     console.error('Error selecting messages from database', err)
@@ -50,8 +49,7 @@ async function insertMessageIntoDb(message: Message) {
   ]
 
   try {
-    const res = await pool
-      .query(query, values)
+    const res = await pool.query(query, values)
     return res
   } catch (err) {
     console.error('Error inserting message into database', err)
@@ -59,4 +57,4 @@ async function insertMessageIntoDb(message: Message) {
   }
 }
 
-export { selectMessagesByUserId,insertMessageIntoDb }
+export { selectMessagesByUserId, insertMessageIntoDb }

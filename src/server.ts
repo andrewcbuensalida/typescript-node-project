@@ -1,3 +1,4 @@
+import './logger' // should be on top
 import express, { Application, Request, Response, NextFunction } from 'express'
 import helmet from 'helmet'
 import cors from 'cors'
@@ -9,7 +10,6 @@ import { tools } from './tools'
 import { tavilySearch } from './api/tavily'
 import { getPokemonImage } from './api/pokeApi'
 import { Message } from './types'
-import './logger'
 
 dotenv.config()
 
@@ -145,17 +145,17 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
       tools: tools,
       parallel_tool_calls: false, // so LLM doesn't respond with multiple tool calls
     })
-    console.log('OPENAI response received'), 
-    newAssistantMessage = {
-      role: 'assistant',
-      content: response.choices[0].message.content || '', // this is '' if it's a tool call
-      title: req.body.title,
-      userId: USERID,
-      createdAt: new Date(),
-      tool_calls: response.choices[0].message.tool_calls, // could be undefined. If parallel_tool_calls is true, this will at most be an array of 1 tool call. If parallel_tool_calls is false, it breaks if LLM decides more than one tool call is needed and there isn't a tool call message afterwards for each. Questions like '54th pokemon?' produce two tool calls.
-    }
+    console.log('OPENAI response received'),
+      (newAssistantMessage = {
+        role: 'assistant',
+        content: response.choices[0].message.content || '', // this is '' if it's a tool call
+        title: req.body.title,
+        userId: USERID,
+        createdAt: new Date(),
+        tool_calls: response.choices[0].message.tool_calls, // could be undefined. If parallel_tool_calls is true, this will at most be an array of 1 tool call. If parallel_tool_calls is false, it breaks if LLM decides more than one tool call is needed and there isn't a tool call message afterwards for each. Questions like '54th pokemon?' produce two tool calls.
+      })
     console.log(`*Example newAssistantMessage: `, newAssistantMessage)
-    
+
     // insert assistant message into database
     try {
       const assistantMessageResult =
@@ -247,8 +247,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         let errorMessage
         try {
           pokemonImage = await getPokemonImage(pokemonName)
-        } catch (error) {
-          console.error('Error fetching Pokemon image:', error)
+        } catch (error: any) {
+          console.error('Error fetching Pokemon image:', error.message)
           errorMessage = 'Error fetching Pokemon image'
         }
 

@@ -1,30 +1,44 @@
-import * as winston from 'winston'
-import DailyRotateFile from 'winston-daily-rotate-file'
-import * as path from 'path'
+import fs from 'fs'
+import path from 'path'
+import { createStream } from 'rotating-file-stream'
 
-const logDirectory = path.join(__dirname, '..', 'logs')
-
-const logger = winston.createLogger({
-  level: 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.Console(), // Output to console
-    new DailyRotateFile({
-      filename: path.join(logDirectory, 'application-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-    }),
-  ],
-})
-
-// Override console.log to write to the logger
-console.log = (...args) => {
-  logger.info(args.join(' '))
+// Create logs directory if it doesn't exist
+const logDirectory = path.join(__dirname, 'logs')
+if (!fs.existsSync(logDirectory)) {
+  fs.mkdirSync(logDirectory)
 }
 
-console.log('Hello, world!')
+// Create a rotating write stream
+const accessLogStream = createStream('logs.log', {
+  interval: '14d', // rotate every 14 days
+  size: '20M', // rotate every 20MB
+  path: logDirectory,
+})
+
+// Override console.log to write to the rotating file stream
+console.log = (message: any, ...optionalParams: any[]) => {
+  const formatMessage = (msg: any) => {
+    if (typeof msg === 'object') {
+      try {
+        return JSON.stringify(msg)
+      } catch (error) {
+        return '[Circular]'
+      }
+    }
+    return msg
+  }
+  const stack = new Error().stack
+  const callerLine = stack ? stack.split('\n')[2] : ''
+  const lineNumberMatch = callerLine.match(/:(\d+):\d+\)?$/)
+  const lineNumber = lineNumberMatch ? lineNumberMatch[1] : 'unknown'
+  const fileNameMatch = callerLine.match(/\/([^\/]+\.ts):\d+:\d+\)?$/) || callerLine.match(/\\([^\\]+\.ts):\d+:\d+\)?$/)
+  const fileName = fileNameMatch ? fileNameMatch[1] : 'unknown'
+
+  const logMessage = `${new Date().toISOString()} [${fileName}:${lineNumber}] - ${formatMessage(
+    message
+  )} ${optionalParams.map(formatMessage).join(' ')}\n`
+  accessLogStream.write(logMessage)
+  process.stdout.write(logMessage) // Also output to console
+}
+
+export default console
