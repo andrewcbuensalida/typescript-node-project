@@ -31,7 +31,9 @@ console.log = (message: any, ...optionalParams: any[]) => {
   const callerLine = stack ? stack.split('\n')[2] : ''
   const lineNumberMatch = callerLine.match(/:(\d+):\d+\)?$/)
   const lineNumber = lineNumberMatch ? lineNumberMatch[1] : 'unknown'
-  const fileNameMatch = callerLine.match(/\/([^\/]+\.ts):\d+:\d+\)?$/) || callerLine.match(/\\([^\\]+\.ts):\d+:\d+\)?$/)
+  const fileNameMatch =
+    callerLine.match(/\/([^\/]+\.ts):\d+:\d+\)?$/) ||
+    callerLine.match(/\\([^\\]+\.ts):\d+:\d+\)?$/)
   const fileName = fileNameMatch ? fileNameMatch[1] : 'unknown'
 
   const logMessage = `${new Date().toISOString()} [${fileName}:${lineNumber}] - ${formatMessage(

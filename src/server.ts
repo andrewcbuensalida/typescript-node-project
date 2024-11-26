@@ -241,12 +241,14 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           newMessages: [newUserMessage, assistantResponseToToolCallMessage],
         })
       } else if (toolCall.function.name === 'getPokemonImage') {
-        const pokemonName = JSON.parse(toolCall.function.arguments).name
+        const nameOrNumber = JSON.parse(
+          toolCall.function.arguments
+        ).nameOrNumber
 
         let pokemonImage
         let errorMessage
         try {
-          pokemonImage = await getPokemonImage(pokemonName)
+          pokemonImage = await getPokemonImage(nameOrNumber)
         } catch (error: any) {
           console.error('Error fetching Pokemon image:', error.message)
           errorMessage = 'Error fetching Pokemon image'
@@ -257,7 +259,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           content:
             errorMessage ||
             JSON.stringify({
-              pokemonName: pokemonName,
+              nameOrNumber: nameOrNumber,
               pokemonImage: pokemonImage,
             }),
           tool_call_id: response.choices[0].message.tool_calls[0].id,
@@ -288,7 +290,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           content:
             errorMessage ||
             JSON.stringify({
-              pokemonName: pokemonName,
+              nameOrNumber: nameOrNumber,
               pokemonImage: pokemonImage,
             }),
           createdAt: new Date(),

@@ -24,16 +24,16 @@ export const tools: any = [
     function: {
       name: 'getPokemonImage',
       description:
-        "Get an image of a Pokemon to show to the user. Call this when you need to get an image of a Pokemon, for example when a user asks 'Show me Pikachu.' or 'show electrode'. Always make sure that the name is correct, lower case, and replace spaces with dashes",
+        "Get an image of a Pokemon to show to the user. Call this when you need to get an image of a Pokemon, for example when a user asks 'Show me Pikachu.' or 'show 35th pokemon'. Always make sure that the name is correct, lower case, and replace spaces with dashes",
       parameters: {
         type: 'object',
         properties: {
-          name: {
+          nameOrNumber: {
             type: 'string',
-            description: 'The name of the Pokemon.',
+            description: 'The name or number of the Pokemon.',
           },
         },
-        required: ['name'],
+        required: ['nameOrNumber'],
         additionalProperties: false,
       },
     },
