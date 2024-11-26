@@ -3,7 +3,7 @@ import helmet from 'helmet'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
-import pool from './database/db'
+import { insertMessageIntoDb, selectMessagesByUserId } from './database/db'
 import OpenAI from 'openai'
 import { tools } from './tools'
 import { tavilySearch } from './api/tavily'
@@ -45,10 +45,7 @@ app.get('/healthCheck', (req, res) => {
 app.get('/api/messages', auth, async (req, res) => {
   console.log('Fetching previous messages...')
   try {
-    const result = await pool.query(
-      'SELECT * FROM messages WHERE user_id = $1',
-      [USERID]
-    )
+    const result = await selectMessagesByUserId(USERID)
     const messages: Message[] = result.rows.map((row: any) => ({
       content: row.content,
       createdAt: row.created_at,
@@ -84,10 +81,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
   // Fetch previous messages from the database, if any
   const previousMessages: Message[] = []
   try {
-    const result = await pool.query(
-      'SELECT * FROM messages WHERE user_id = $1 AND title = $2',
-      [USERID, req.body.title]
-    )
+    const result = await selectMessagesByUserId(USERID)
     // convert tool_calls from string in db to JSON
     result.rows.forEach((row: any) => {
       if (row.tool_calls) {
@@ -111,16 +105,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
     }
     // insert system message into database
     try {
-      const result = await pool.query(
-        'INSERT INTO messages (user_id, role, content, title, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-        [
-          systemMessage.userId,
-          systemMessage.role,
-          systemMessage.content,
-          systemMessage.title,
-          systemMessage.createdAt,
-        ]
-      )
+      const result = await insertMessageIntoDb(systemMessage)
       const { id } = result.rows[0]
       systemMessage.id = id
     } catch (error) {
@@ -139,16 +124,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
   }
   // insert user message into database
   try {
-    const userMessageResult = await pool.query(
-      'INSERT INTO messages (user_id, role, content, title, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [
-        newUserMessage.userId,
-        newUserMessage.role,
-        newUserMessage.content,
-        newUserMessage.title,
-        newUserMessage.createdAt,
-      ]
-    )
+    const userMessageResult = await insertMessageIntoDb(newUserMessage)
     const { id } = userMessageResult.rows[0]
     newUserMessage.id = id
   } catch (error) {
@@ -178,17 +154,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
     // insert assistant message into database
     try {
-      const assistantMessageResult = await pool.query(
-        'INSERT INTO messages (user_id, role, content, title, created_at, tool_calls) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-        [
-          newAssistantMessage.userId,
-          newAssistantMessage.role,
-          newAssistantMessage.content,
-          newAssistantMessage.title,
-          newAssistantMessage.createdAt,
-          JSON.stringify(newAssistantMessage.tool_calls),
-        ]
-      )
+      const assistantMessageResult =
+        await insertMessageIntoDb(newAssistantMessage)
       const { id } = assistantMessageResult.rows[0]
       newAssistantMessage.id = id
     } catch (error) {
@@ -224,16 +191,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
         // insert function call result message into database
         try {
-          const functionCallResultMessageResult = await pool.query(
-            'INSERT INTO messages (user_id, role, content, tool_call_id, title, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-            [
-              functionCallResultMessage.userId,
-              functionCallResultMessage.role,
-              functionCallResultMessage.content,
-              functionCallResultMessage.tool_call_id,
-              functionCallResultMessage.title,
-              functionCallResultMessage.createdAt,
-            ]
+          const functionCallResultMessageResult = await insertMessageIntoDb(
+            functionCallResultMessage
           )
           const { id } = functionCallResultMessageResult.rows[0]
           functionCallResultMessage.id = id
@@ -262,16 +221,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         }
 
         try {
-          const assistantResponseToToolCallMessageResult = await pool.query(
-            'INSERT INTO messages (user_id, role, content, title, created_at) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-            [
-              assistantResponseToToolCallMessage.userId,
-              assistantResponseToToolCallMessage.role,
-              assistantResponseToToolCallMessage.content,
-              assistantResponseToToolCallMessage.title,
-              assistantResponseToToolCallMessage.createdAt,
-            ]
-          )
+          const assistantResponseToToolCallMessageResult =
+            await insertMessageIntoDb(assistantResponseToToolCallMessage)
           const { id } = assistantResponseToToolCallMessageResult.rows[0]
           assistantResponseToToolCallMessage.id = id
         } catch (error) {
@@ -315,18 +266,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
         // insert function call result message into database
         try {
-          const functionCallResultMessageResult = await pool.query(
-            'INSERT INTO messages (user_id, role, content, tool_call_id, title, created_at,tool_name,error_message) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
-            [
-              functionCallResultMessage.userId,
-              functionCallResultMessage.role,
-              functionCallResultMessage.content,
-              functionCallResultMessage.tool_call_id,
-              functionCallResultMessage.title,
-              functionCallResultMessage.createdAt,
-              functionCallResultMessage.toolName,
-              functionCallResultMessage.errorMessage,
-            ]
+          const functionCallResultMessageResult = await insertMessageIntoDb(
+            functionCallResultMessage
           )
           const { id } = functionCallResultMessageResult.rows[0]
           functionCallResultMessage.id = id
@@ -354,18 +295,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         }
         // insert function call result message into database
         try {
-          const assistantResponseToToolCallMessageResult = await pool.query(
-            'INSERT INTO messages (user_id, role, content, title, created_at,tool_name,error_message) VALUES ($1, $2, $3, $4, $5, $6,$7) RETURNING id',
-            [
-              assistantResponseToToolCallMessage.userId,
-              assistantResponseToToolCallMessage.role,
-              assistantResponseToToolCallMessage.content,
-              assistantResponseToToolCallMessage.title,
-              assistantResponseToToolCallMessage.createdAt,
-              assistantResponseToToolCallMessage.toolName,
-              assistantResponseToToolCallMessage.errorMessage,
-            ]
-          )
+          const assistantResponseToToolCallMessageResult =
+            await insertMessageIntoDb(assistantResponseToToolCallMessage)
           const { id } = assistantResponseToToolCallMessageResult.rows[0]
           assistantResponseToToolCallMessage.id = id
         } catch (error) {
