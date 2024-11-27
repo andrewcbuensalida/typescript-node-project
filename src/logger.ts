@@ -15,7 +15,7 @@ const accessLogStream = createStream('logs.log', {
   path: logDirectory,
 })
 
-const overrideConsoleMethod = (method: 'log' | 'error', label: string) => {
+const overrideConsoleMethod = (method: 'log' | 'error' | 'debug', label: string) => {
   console[method] = (message: any, ...optionalParams: any[]) => {
     const formatMessage = (msg: any) => {
       if (typeof msg === 'object') {
@@ -46,5 +46,6 @@ const overrideConsoleMethod = (method: 'log' | 'error', label: string) => {
 
 overrideConsoleMethod('log', '')
 overrideConsoleMethod('error', 'ERROR')
+overrideConsoleMethod('debug', 'DEBUG')
 
 export default console

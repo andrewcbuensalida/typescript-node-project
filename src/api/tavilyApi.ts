@@ -16,4 +16,4 @@ export const tavilySearch = async (query: string) => {
 }
 
 // Test the function
-// tavilySearch('What is the capital of France?');
+// tavilySearch('other name for mimikyu').then(console.log).catch(console.error)

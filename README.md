@@ -129,5 +129,3 @@ https://lucid.app/lucidchart/89b779a0-97cc-48c0-b3dd-dd03d01d1958/edit?viewport_
 - front-end should send chat_id
 - auth
 - Deploy be elastic Beanstalk
-- add to portfolio
-- dry

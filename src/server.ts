@@ -8,7 +8,7 @@ import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import { insertMessageIntoDb, selectMessagesByUserId } from './database/db'
 import { tavilySearch } from './api/tavilyApi'
-import { getPokemonImage } from './api/pokeApi'
+import { getPokemonImageByName } from './api/pokeApi'
 import { Message } from './types'
 import { openaiChatCompletionsCreate } from './api/openaiApi'
 
@@ -96,7 +96,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
       userId: USERID,
       role: 'system',
       content:
-        'You are a helpful expert with Pokemon. Use the supplied tools to assist the user.',
+        `You are a helpful expert with Pokemon. Use the supplied tools to assist the user. If a user asks general information about Pokemon, or current events, use the tavilySearch tool. If a user asks for an image of a Pokemon and gives a number, first use the tavilySearch tool to get the name, then pass that name to the getPokemonImageByName tool to get the image. If you can't find the answer after 5 tool calls, say you don't know.`,
       title: req.body.title, // the title gets the user's first message
       createdAt: new Date(),
     }
@@ -133,13 +133,23 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
   let newAssistantMessage: Message
 
-  try {
-    // TODO should loop while response.choices[0].finish_reason === 'tool_calls'
-    console.log('Sending user message to OPENAI...')
-    const response: any = await openaiChatCompletionsCreate({
-      messages: messages,
-    })
-
+  // loop and call as many tools until the LLM decides to stop
+  while (true) {
+    let response
+    try {
+      // TODO should loop while response.choices[0].finish_reason === 'tool_calls'
+      console.log(
+        `Sending user message to OPENAI "${messages[
+          messages.length - 1
+        ].content.substring(0, 50)}..."`
+      )
+      response = await openaiChatCompletionsCreate({
+        messages: messages,
+      })
+    } catch (e: any) {
+      console.error(e)
+      return res.status(500).send(e.message)
+    }
     newAssistantMessage = {
       role: 'assistant',
       content: response.choices[0].message.content || '', // this is '' if it's a tool call
@@ -148,6 +158,9 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
       createdAt: new Date(),
       tool_calls: response.choices[0].message.tool_calls, // could be undefined. If parallel_tool_calls is true, this will at most be an array of 1 tool call. If parallel_tool_calls is false, it breaks if LLM decides more than one tool call is needed and there isn't a tool call message afterwards for each. Questions like '54th pokemon?' produce two tool calls.
     }
+    console.log(
+      `Assistant response: ${newAssistantMessage.content.substring(0, 50)}...`
+    )
 
     // insert assistant message into database
     try {
@@ -161,8 +174,8 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
     }
     messages.push(newAssistantMessage)
 
-    // if not a tool call
-    if (response.choices[0].finish_reason === 'stop') {
+    // if not a tool call, could be stop, or other reason
+    if (response.choices[0].finish_reason !== 'tool_calls') {
       return res.json({ newMessages: [newUserMessage, newAssistantMessage] })
       // if it's a tool call
     } else if (response.choices[0].finish_reason === 'tool_calls') {
@@ -183,10 +196,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           role: 'tool',
           content: JSON.stringify({
             tavilyQuery:
-              tavilyQuery +
-              '. Please answer in bullet points.' +
-              '. The current date is ' +
-              new Date().toDateString(),
+              tavilyQuery,
             tavilyResponse: tavilyResponse,
           }),
           tool_call_id: response.choices[0].message.tool_calls[0].id,
@@ -194,7 +204,61 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
           title: req.body.title,
           userId: USERID,
         }
+        console.log(
+          `Tool response: ${functionCallResultMessage.content.substring(
+            0,
+            50
+          )}...`
+        )
+        // insert function call result message into database
+        try {
+          const functionCallResultMessageResult = await insertMessageIntoDb(
+            functionCallResultMessage
+          )
+          const { id } = functionCallResultMessageResult.rows[0]
+          functionCallResultMessage.id = id
+        } catch (error) {
+          console.error(
+            'Error inserting function call result message into database:',
+            error
+          )
+          // TODO need to delete the LLM tool calls message from the database so it doesn't error
+          return res.status(500).send('Internal Server Error')
+        }
+        messages.push(functionCallResultMessage)
+      } else if (toolCall.function.name === 'getPokemonImageByName') {
+        const pokemonName = JSON.parse(toolCall.function.arguments).pokemonName
 
+        let pokemonImage
+        let errorMessage
+        try {
+          pokemonImage = await getPokemonImageByName(pokemonName)
+        } catch (error: any) {
+          console.error('Error fetching Pokemon image:', error.message)
+          errorMessage = 'Error fetching Pokemon image'
+        }
+
+        const functionCallResultMessage: Message = {
+          role: 'tool',
+          content:
+            errorMessage ||
+            JSON.stringify({
+              pokemonName: pokemonName,
+              pokemonImage: pokemonImage,
+            }),
+          tool_call_id: response.choices[0].message.tool_calls[0].id,
+          createdAt: new Date(),
+          title: req.body.title,
+          userId: USERID,
+          toolName: 'getPokemonImageByName',
+          errorMessage: errorMessage,
+        }
+        console.log(
+          `Tool response: ${functionCallResultMessage.content.substring(
+            0,
+            50
+          )}...`
+        )
         // insert function call result message into database
         try {
           const functionCallResultMessageResult = await insertMessageIntoDb(
@@ -212,101 +276,28 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         }
         messages.push(functionCallResultMessage)
 
-        let assistantResponseToToolCall
-        try {
-          // Send the tool call result back to the LLM
-          assistantResponseToToolCall = await openaiChatCompletionsCreate({
-            messages: messages,
-          })
-        } catch (e) {
-          console.error(e)
-          return res.status(500).send('Internal Server Error')
-        }
-
-        const assistantResponseToToolCallMessage: Message = {
-          role: 'assistant',
-          content: assistantResponseToToolCall.choices[0].message.content || '',
-          title: req.body.title,
-          userId: USERID,
-          createdAt: new Date(),
-        }
-
-        try {
-          const assistantResponseToToolCallMessageResult =
-            await insertMessageIntoDb(assistantResponseToToolCallMessage)
-          const { id } = assistantResponseToToolCallMessageResult.rows[0]
-          assistantResponseToToolCallMessage.id = id
-        } catch (error) {
-          console.error(
-            'Error inserting assistant response to tool call message into database:',
-            error
-          )
-          return res.status(500).send('Internal Server Error')
-        }
-
-        return res.json({
-          newMessages: [newUserMessage, assistantResponseToToolCallMessage],
-        })
-      } else if (toolCall.function.name === 'getPokemonImage') {
-        const nameOrNumber = JSON.parse(
-          toolCall.function.arguments
-        ).nameOrNumber
-
-        let pokemonImage
-        let errorMessage
-        try {
-          pokemonImage = await getPokemonImage(nameOrNumber)
-        } catch (error: any) {
-          console.error('Error fetching Pokemon image:', error.message)
-          errorMessage = 'Error fetching Pokemon image'
-        }
-
-        const functionCallResultMessage: Message = {
-          role: 'tool',
-          content:
-            errorMessage ||
-            JSON.stringify({
-              nameOrNumber: nameOrNumber,
-              pokemonImage: pokemonImage,
-            }),
-          tool_call_id: response.choices[0].message.tool_calls[0].id,
-          createdAt: new Date(),
-          title: req.body.title,
-          userId: USERID,
-          toolName: 'getPokemonImage',
-          errorMessage: errorMessage,
-        }
-
-        // insert function call result message into database
-        try {
-          const functionCallResultMessageResult = await insertMessageIntoDb(
-            functionCallResultMessage
-          )
-          const { id } = functionCallResultMessageResult.rows[0]
-          functionCallResultMessage.id = id
-        } catch (error) {
-          console.error(
-            'Error inserting function call result message into database:',
-            error
-          )
-          // TODO need to delete the LLM tool calls message from the database so it doesn't error
-          return res.status(500).send('Internal Server Error')
-        }
-
+        // Don't need to loop back to the top because we don't need to get the LLMs response to the tool call, we just use a placeholder message
         const assistantResponseToToolCallMessage: Message = {
           role: 'assistant',
           content:
             errorMessage ||
             JSON.stringify({
-              nameOrNumber: nameOrNumber,
+              pokemonName: pokemonName,
               pokemonImage: pokemonImage,
             }),
           createdAt: new Date(),
           title: req.body.title,
           userId: USERID,
-          toolName: 'getPokemonImage',
+          toolName: 'getPokemonImageByName',
           errorMessage: errorMessage,
         }
+
+        console.log(
+          `Assistant response: ${assistantResponseToToolCallMessage.content.substring(
+            0,
+            50
+          )}...`
+        )
         // insert function call result message into database
         try {
           const assistantResponseToToolCallMessageResult =
@@ -326,9 +317,6 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         })
       }
     }
-  } catch (e: any) {
-    console.error(e)
-    res.status(500).send(e.message)
   }
 })
 
