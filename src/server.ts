@@ -1,16 +1,17 @@
 import './logger' // should be on top
+import dotenv from 'dotenv'
+dotenv.config()
+//
 import express, { Application, Request, Response, NextFunction } from 'express'
 import helmet from 'helmet'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
-import dotenv from 'dotenv'
 import { insertMessageIntoDb, selectMessagesByUserId } from './database/db'
 import { tavilySearch } from './api/tavilyApi'
 import { getPokemonImage } from './api/pokeApi'
 import { Message } from './types'
 import { openaiChatCompletionsCreate } from './api/openaiApi'
 
-dotenv.config()
 const USERID = 1 // TODO user needs to send this in the jwt token
 
 const app: Application = express()
@@ -133,6 +134,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
   let newAssistantMessage: Message
 
   try {
+    // TODO should loop while response.choices[0].finish_reason === 'tool_calls'
     console.log('Sending user message to OPENAI...')
     const response: any = await openaiChatCompletionsCreate({
       messages: messages,
@@ -168,14 +170,23 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
 
       if (toolCall.function.name === 'tavilySearch') {
         const tavilyQuery = JSON.parse(toolCall.function.arguments).tavilyQuery
-        const tavilyResponse = await tavilySearch(
-          tavilyQuery + '. The current date is ' + new Date().toDateString()
-        )
+
+        let tavilyResponse
+        try {
+          tavilyResponse = await tavilySearch(tavilyQuery)
+        } catch (e) {
+          console.error(e)
+          tavilyResponse = 'Error responding to message'
+        }
 
         const functionCallResultMessage: Message = {
           role: 'tool',
           content: JSON.stringify({
-            tavilyQuery: tavilyQuery + '. Please answer in bullet points.',
+            tavilyQuery:
+              tavilyQuery +
+              '. Please answer in bullet points.' +
+              '. The current date is ' +
+              new Date().toDateString(),
             tavilyResponse: tavilyResponse,
           }),
           tool_call_id: response.choices[0].message.tool_calls[0].id,
@@ -196,14 +207,21 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
             'Error inserting function call result message into database:',
             error
           )
+          // TODO need to delete the LLM tool calls message from the database so it doesn't error
           return res.status(500).send('Internal Server Error')
         }
         messages.push(functionCallResultMessage)
 
-        // Call the OpenAI API's chat completions endpoint to send the tool call result back to the model
-        const assistantResponseToToolCall = await openaiChatCompletionsCreate({
-          messages: messages,
-        })
+        let assistantResponseToToolCall
+        try {
+          // Send the tool call result back to the LLM
+          assistantResponseToToolCall = await openaiChatCompletionsCreate({
+            messages: messages,
+          })
+        } catch (e) {
+          console.error(e)
+          return res.status(500).send('Internal Server Error')
+        }
 
         const assistantResponseToToolCallMessage: Message = {
           role: 'assistant',
@@ -271,6 +289,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
             'Error inserting function call result message into database:',
             error
           )
+          // TODO need to delete the LLM tool calls message from the database so it doesn't error
           return res.status(500).send('Internal Server Error')
         }
 
