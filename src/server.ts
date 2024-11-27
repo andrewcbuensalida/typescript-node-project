@@ -6,7 +6,7 @@ import express, { Application, Request, Response, NextFunction } from 'express'
 import helmet from 'helmet'
 import cors from 'cors'
 import rateLimit from 'express-rate-limit'
-import { insertMessageIntoDb, selectMessagesByUserId } from './database/db'
+import { insertMessageIntoDb, selectMessages } from './database/db'
 import { tavilySearch } from './api/tavilyApi'
 import { getPokemonImageByName } from './api/pokeApi'
 import { Message } from './types'
@@ -42,7 +42,7 @@ app.get('/healthCheck', (req, res) => {
 app.get('/api/messages', auth, async (req, res) => {
   console.log('Fetching previous messages...')
   try {
-    const result = await selectMessagesByUserId(USERID)
+    const result = await selectMessages({ userId: USERID })
     const messages: Message[] = result.rows.map((row: any) => ({
       content: row.content,
       createdAt: row.created_at,
@@ -78,7 +78,10 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
   // Fetch previous messages from the database, if any
   const previousMessages: Message[] = []
   try {
-    const result = await selectMessagesByUserId(USERID)
+    const result = await selectMessages({
+      userId: USERID,
+      title: req.body.title,
+    })
     // convert tool_calls from string in db to JSON
     result.rows.forEach((row: any) => {
       if (row.tool_calls) {
@@ -95,8 +98,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
     const systemMessage: Message = {
       userId: USERID,
       role: 'system',
-      content:
-        `You are a helpful expert with Pokemon. Use the supplied tools to assist the user. If a user asks general information about Pokemon, or current events, use the tavilySearch tool. If a user asks for an image of a Pokemon and gives a number, first use the tavilySearch tool to get the name, then pass that name to the getPokemonImageByName tool to get the image. If you can't find the answer after 5 tool calls, say you don't know.`,
+      content: `You are a helpful expert with Pokemon. Use the supplied tools to assist the user. If a user asks general information about Pokemon, or current events, use the tavilySearch tool. If a user asks for an image of a Pokemon and gives a number, first use the tavilySearch tool to get the name, then pass that name to the getPokemonImageByName tool to get the image. If you can't find the answer after 5 tool calls, say you don't know. Important, the current date at is ${new Date().toLocaleDateString()}.`,
       title: req.body.title, // the title gets the user's first message
       createdAt: new Date(),
     }
@@ -137,7 +139,6 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
   while (true) {
     let response
     try {
-      // TODO should loop while response.choices[0].finish_reason === 'tool_calls'
       console.log(
         `Sending user message to OPENAI "${messages[
           messages.length - 1
@@ -195,8 +196,7 @@ app.post('/api/completions', auth, limiter, async (req, res) => {
         const functionCallResultMessage: Message = {
           role: 'tool',
           content: JSON.stringify({
-            tavilyQuery:
-              tavilyQuery,
+            tavilyQuery: tavilyQuery,
             tavilyResponse: tavilyResponse,
           }),
           tool_call_id: response.choices[0].message.tool_calls[0].id,

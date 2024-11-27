@@ -15,14 +15,18 @@ const pool = process.env.DATABASE_URL
       user: 'yourusername',
     })
 
-
-
-async function selectMessagesByUserId(userId: number) {
-  const query = `
+async function selectMessages({ userId, title }: Partial<Message>) {
+  // Partial makes all properties optional
+  console.log('Selecting messages from database...')
+  let query = `
         SELECT * FROM messages
         WHERE user_id = $1
       `
-  const values = [userId]
+  const values: any = [userId]
+  if (title) {
+    query += ' AND title = $2'
+    values.push(title)
+  }
 
   return withRetries(async () => {
     const res = await pool.query(query, values)
@@ -54,4 +58,4 @@ async function insertMessageIntoDb(message: Message) {
   })
 }
 
-export { selectMessagesByUserId, insertMessageIntoDb }
+export { selectMessages, insertMessageIntoDb }
