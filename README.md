@@ -121,6 +121,19 @@ https://lucid.app/lucidchart/89b779a0-97cc-48c0-b3dd-dd03d01d1958/edit?viewport_
       - `CMD-SHELL, curl -f http://localhost/healthCheck || exit 1`
   - Create a service (in cluster section) with application load balancer. Select task family from previous step. This will run a cloudformation stack.
 
+
+## Create a Postgres RDS database
+  - Choose Standards create so you can set Public access to yes. Easy create sets it to no but says you could change it afterwards. This is not true.
+  - Choose Aurora Postgres compatible
+  - Choose a username.
+  - Choose a password.
+  - Choose Serverless in Instance configuration
+  - Choose Public Access Yes
+  - In additional options, choose an initial database name
+  - After creation, it takes a few minutes. Copy the URL for the writer instance.
+  - Go to pdadmin and use these credentials to connect
+
+
 ## TODO
 - get rid of 'not secure' next to url. 
 - backend in elastic beanstalk
